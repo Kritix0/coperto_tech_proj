@@ -131,7 +131,7 @@ function seed(): MenuItem[] {
   ];
 }
 
-let items: MenuItem[] = seed();
+const items: MenuItem[] = seed();
 
 /**
  * Инвариант остатка: доступная позиция с остатком 0 автоматически уходит в стоп
