@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { MenuItem, StopItemPayload, StopReason } from '@/types/menu';
 import { STOP_REASONS, STOP_REASON_LABELS } from '@/shared/domain';
 import { Button } from '@/shared/ui/Button';
@@ -19,7 +19,7 @@ import {
 
 interface StopReasonPanelProps {
   item: MenuItem | null;
-  onSubmit: (id: string, payload: StopItemPayload) => void;
+  onSubmit: (id: string, payload: StopItemPayload) => Promise<void>;
   onClose: () => void;
 }
 
@@ -50,10 +50,13 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
     defaultValues: buildDefaults(item),
   });
 
-  // При смене выбранной позиции переинициализируем форму.
+  // Переинициализируем форму только при СМЕНЕ позиции (по id), а не на каждое
+  // обновление кэша той же позиции — иначе оптимистичный патч/откат затирал бы ввод.
+  const itemId = item?.id ?? null;
   useEffect(() => {
     reset(buildDefaults(item));
-  }, [item, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId, reset]);
 
   // Закрытие по Esc.
   useEffect(() => {
@@ -80,106 +83,102 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
     // currentUntil включён намеренно: пересобрать список при подстановке срока из сида.
   }, [open, currentUntil]);
 
-  const submit = handleSubmit((values) => {
+  const submit = handleSubmit(async (values) => {
     if (!item || values.reason === '') return;
     const payload: StopItemPayload = {
       reason: values.reason,
       until: values.untilMode === 'shift' ? null : values.untilIso,
     };
-    onSubmit(item.id, payload);
+    // await держит RHF isSubmitting → кнопка в состоянии загрузки и disabled.
+    await onSubmit(item.id, payload);
   });
 
+  if (!open || !item) return null;
+
   return (
-    <AnimatePresence>
-      {open && item && (
-        <>
-          <motion.div
-            className="bg-ink/30 fixed inset-0 z-40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            onClick={onClose}
-          />
-          <motion.aside
-            className="bg-card fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col shadow-2xl"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="stop-panel-title"
-          >
-            <div className="border-line flex items-start justify-between border-b px-6 py-4">
-              <div>
-                <h2 id="stop-panel-title" className="text-ink text-lg font-semibold">
-                  {isEdit ? 'Изменить стоп' : 'Поставить в стоп-лист'}
-                </h2>
-                <p className="text-muted mt-0.5 text-sm">{item.title}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={onClose} aria-label="Закрыть панель">
-                ✕
-              </Button>
-            </div>
+    // Анимируем только появление (initial → animate). Закрытие — мгновенный
+    // размонтаж по условию: AnimatePresence exit под React 19 здесь не размонтирует
+    // узел после анимации, поэтому не полагаемся на него.
+    <motion.div
+      className="fixed inset-0 z-40"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+    >
+      <div className="bg-ink/30 absolute inset-0" onClick={onClose} />
+      <motion.aside
+        className="bg-card absolute top-0 right-0 flex h-full w-full max-w-md flex-col shadow-2xl"
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stop-panel-title"
+      >
+        <div className="border-line flex items-start justify-between border-b px-6 py-4">
+          <div>
+            <h2 id="stop-panel-title" className="text-ink text-lg font-semibold">
+              {isEdit ? 'Изменить стоп' : 'Поставить в стоп-лист'}
+            </h2>
+            <p className="text-muted mt-0.5 text-sm">{item.title}</p>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose} aria-label="Закрыть панель">
+            ✕
+          </Button>
+        </div>
 
-            <form
-              onSubmit={submit}
-              className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5"
+        <form onSubmit={submit} className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
+          <Field label="Причина стопа" htmlFor="reason" error={errors.reason?.message}>
+            <Select id="reason" invalid={!!errors.reason} {...register('reason')}>
+              <option value="">Выберите причину…</option>
+              {STOP_REASONS.map((reason: StopReason) => (
+                <option key={reason} value={reason}>
+                  {STOP_REASON_LABELS[reason]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-ink mb-1 text-sm font-medium">Срок стопа</legend>
+            <label className="text-ink flex items-center gap-2 text-sm">
+              <input type="radio" value="shift" {...register('untilMode')} />
+              До конца смены
+            </label>
+            <label className="text-ink flex items-center gap-2 text-sm">
+              <input type="radio" value="time" {...register('untilMode')} />
+              Конкретное время
+            </label>
+          </fieldset>
+
+          {untilMode === 'time' && (
+            <Field
+              label="Время снятия стопа"
+              htmlFor="untilIso"
+              error={errors.untilIso?.message}
+              hint="Не позже чем через 24 часа, шаг 15 минут."
             >
-              <Field label="Причина стопа" htmlFor="reason" error={errors.reason?.message}>
-                <Select id="reason" invalid={!!errors.reason} {...register('reason')}>
-                  <option value="">Выберите причину…</option>
-                  {STOP_REASONS.map((reason: StopReason) => (
-                    <option key={reason} value={reason}>
-                      {STOP_REASON_LABELS[reason]}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
+              <Select id="untilIso" invalid={!!errors.untilIso} {...register('untilIso')}>
+                <option value="">Выберите время…</option>
+                {slots.map((slot) => (
+                  <option key={slot.iso} value={slot.iso}>
+                    {slot.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
 
-              <fieldset className="flex flex-col gap-2">
-                <legend className="text-ink mb-1 text-sm font-medium">Срок стопа</legend>
-                <label className="text-ink flex items-center gap-2 text-sm">
-                  <input type="radio" value="shift" {...register('untilMode')} />
-                  До конца смены
-                </label>
-                <label className="text-ink flex items-center gap-2 text-sm">
-                  <input type="radio" value="time" {...register('untilMode')} />
-                  Конкретное время
-                </label>
-              </fieldset>
-
-              {untilMode === 'time' && (
-                <Field
-                  label="Время снятия стопа"
-                  htmlFor="untilIso"
-                  error={errors.untilIso?.message}
-                  hint="Не позже чем через 24 часа, шаг 15 минут."
-                >
-                  <Select id="untilIso" invalid={!!errors.untilIso} {...register('untilIso')}>
-                    <option value="">Выберите время…</option>
-                    {slots.map((slot) => (
-                      <option key={slot.iso} value={slot.iso}>
-                        {slot.label}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              )}
-
-              <div className="mt-auto flex gap-3 pt-4">
-                <Button type="submit" loading={isSubmitting} className="flex-1">
-                  {isEdit ? 'Сохранить' : 'В стоп-лист'}
-                </Button>
-                <Button type="button" variant="secondary" onClick={onClose}>
-                  Отмена
-                </Button>
-              </div>
-            </form>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+          <div className="mt-auto flex gap-3 pt-4">
+            <Button type="submit" loading={isSubmitting} className="flex-1">
+              {isEdit ? 'Сохранить' : 'В стоп-лист'}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Отмена
+            </Button>
+          </div>
+        </form>
+      </motion.aside>
+    </motion.div>
   );
 }

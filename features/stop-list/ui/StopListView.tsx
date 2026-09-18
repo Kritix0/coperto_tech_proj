@@ -27,9 +27,16 @@ export function StopListView() {
     [allItems, panelItemId],
   );
 
-  const handleStopSubmit = (id: string, payload: StopItemPayload) => {
-    stop.mutate({ id, payload }); // оптимистично — панель закрываем сразу
-    closePanel();
+  const handleStopSubmit = async (id: string, payload: StopItemPayload) => {
+    // Строка обновляется оптимистично сразу (onMutate), но панель держим открытой
+    // со спиннером на кнопке до ответа сервера: успех — закрываем, ошибка — панель
+    // остаётся для повтора (тост об ошибке показывает onError).
+    try {
+      await stop.mutateAsync({ id, payload });
+      closePanel();
+    } catch {
+      // остаёмся в панели
+    }
   };
 
   const handleResume = (item: MenuItem) => resume.mutate({ id: item.id });
