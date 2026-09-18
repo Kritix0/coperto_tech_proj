@@ -75,7 +75,7 @@ function seed(): MenuItem[] {
       id: 'b2',
       title: 'Негрони',
       shop: 'bar',
-      stock: 3,
+      stock: 33,
       status: { kind: 'stopped', reason: 'out_of_stock', until: iso(3 * 3_600_000) },
       updatedAt: iso(-1_200_000),
     },
