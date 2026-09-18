@@ -45,52 +45,65 @@ export const stopItemPayloadSchema = z
 export type StopItemPayloadInput = z.infer<typeof stopItemPayloadSchema>;
 
 /**
- * Схема формы. Хранит режим срока отдельно от ISO-значения, потому что
- * `<input type="datetime-local">` работает с локальным временем, а payload — с ISO.
+ * Схема формы. Срок либо «до конца смены» (untilMode: 'shift'), либо конкретный
+ * слот (untilMode: 'time' + untilIso — ISO-строка из готового списка слотов).
  * Причина допускает пустую строку в начальном состоянии, но обязана быть выбрана.
  */
 export const stopFormSchema = z
   .object({
     reason: z.union([z.literal(''), stopReasonSchema]),
     untilMode: z.enum(['shift', 'time']),
-    untilLocal: z.string(),
+    untilIso: z.string(),
   })
   .superRefine((val, ctx) => {
     if (val.reason === '') {
       ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Выберите причину', path: ['reason'] });
     }
     if (val.untilMode === 'time') {
-      if (!val.untilLocal) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'Укажите время',
-          path: ['untilLocal'],
-        });
+      if (!val.untilIso) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Укажите время', path: ['untilIso'] });
         return;
       }
-      const iso = localInputToIso(val.untilLocal);
-      const error = validateUntil(iso);
+      const error = validateUntil(val.untilIso);
       if (error) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ['untilLocal'] });
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: error, path: ['untilIso'] });
       }
     }
   });
 
 export type StopFormValues = z.infer<typeof stopFormSchema>;
 
-/** `datetime-local` (без таймзоны) → ISO с оффсетом. */
-export function localInputToIso(local: string): string | null {
-  if (!local) return null;
-  const date = new Date(local);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
+export interface UntilSlot {
+  iso: string;
+  label: string;
 }
 
-/** ISO → значение для `datetime-local` (локальное время, минуты). */
-export function isoToLocalInput(iso: string | null): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const tzOffset = date.getTimezoneOffset() * 60 * 1000;
-  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+const slotFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** Русская подпись слота: «дд.мм, ЧЧ:ММ» (24 часа). */
+export function formatSlotLabel(iso: string): string {
+  return slotFormatter.format(new Date(iso));
+}
+
+/**
+ * Все допустимые слоты срока: от следующей 15-минутной границы (строго в будущем)
+ * до now + 24 часа. Список строится по тем же правилам, что и валидация,
+ * поэтому выбрать невалидное время нельзя в принципе — и формат от локали браузера
+ * не зависит.
+ */
+export function generateUntilSlots(now = Date.now()): UntilSlot[] {
+  const start = Math.floor(now / STEP_MS) * STEP_MS + STEP_MS; // строго > now
+  const end = now + MAX_AHEAD_MS;
+  const slots: UntilSlot[] = [];
+  for (let t = start; t <= end; t += STEP_MS) {
+    const iso = new Date(t).toISOString();
+    slots.push({ iso, label: formatSlotLabel(iso) });
+  }
+  return slots;
 }

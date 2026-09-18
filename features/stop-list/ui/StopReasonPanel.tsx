@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -8,13 +8,13 @@ import type { MenuItem, StopItemPayload, StopReason } from '@/types/menu';
 import { STOP_REASONS, STOP_REASON_LABELS } from '@/shared/domain';
 import { Button } from '@/shared/ui/Button';
 import { Select } from '@/shared/ui/Select';
-import { Input } from '@/shared/ui/Input';
 import { Field } from '@/shared/ui/Field';
 import {
-  isoToLocalInput,
-  localInputToIso,
+  formatSlotLabel,
+  generateUntilSlots,
   stopFormSchema,
   type StopFormValues,
+  type UntilSlot,
 } from '../model/schema';
 
 interface StopReasonPanelProps {
@@ -28,10 +28,10 @@ function buildDefaults(item: MenuItem | null): StopFormValues {
     return {
       reason: item.status.reason,
       untilMode: item.status.until === null ? 'shift' : 'time',
-      untilLocal: isoToLocalInput(item.status.until),
+      untilIso: item.status.until ?? '',
     };
   }
-  return { reason: '', untilMode: 'shift', untilLocal: '' };
+  return { reason: '', untilMode: 'shift', untilIso: '' };
 }
 
 export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProps) {
@@ -66,20 +66,28 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
   }, [open, onClose]);
 
   const untilMode = watch('untilMode');
+  const currentUntil = watch('untilIso');
+
+  // Слоты пересчитываем на открытие панели. Если у редактируемой позиции срок
+  // не попадает в сетку (например, из сида) — добавляем его первым, чтобы он был виден.
+  const slots = useMemo<UntilSlot[]>(() => {
+    if (!open) return [];
+    const base = generateUntilSlots();
+    if (currentUntil && !base.some((s) => s.iso === currentUntil)) {
+      return [{ iso: currentUntil, label: formatSlotLabel(currentUntil) }, ...base];
+    }
+    return base;
+    // currentUntil включён намеренно: пересобрать список при подстановке срока из сида.
+  }, [open, currentUntil]);
 
   const submit = handleSubmit((values) => {
     if (!item || values.reason === '') return;
     const payload: StopItemPayload = {
       reason: values.reason,
-      until: values.untilMode === 'shift' ? null : localInputToIso(values.untilLocal),
+      until: values.untilMode === 'shift' ? null : values.untilIso,
     };
     onSubmit(item.id, payload);
   });
-
-  // Границы для datetime-local: сейчас … +24 часа.
-  const now = new Date();
-  const minLocal = isoToLocalInput(now.toISOString());
-  const maxLocal = isoToLocalInput(new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString());
 
   return (
     <AnimatePresence>
@@ -145,19 +153,18 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
               {untilMode === 'time' && (
                 <Field
                   label="Время снятия стопа"
-                  htmlFor="untilLocal"
-                  error={errors.untilLocal?.message}
+                  htmlFor="untilIso"
+                  error={errors.untilIso?.message}
                   hint="Не позже чем через 24 часа, шаг 15 минут."
                 >
-                  <Input
-                    id="untilLocal"
-                    type="datetime-local"
-                    step={900}
-                    min={minLocal}
-                    max={maxLocal}
-                    invalid={!!errors.untilLocal}
-                    {...register('untilLocal')}
-                  />
+                  <Select id="untilIso" invalid={!!errors.untilIso} {...register('untilIso')}>
+                    <option value="">Выберите время…</option>
+                    {slots.map((slot) => (
+                      <option key={slot.iso} value={slot.iso}>
+                        {slot.label}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
               )}
 
