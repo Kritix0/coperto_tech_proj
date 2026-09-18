@@ -1,0 +1,1 @@
+# coperto_tech_proj
