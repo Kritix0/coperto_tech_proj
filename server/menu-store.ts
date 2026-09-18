@@ -58,7 +58,7 @@ function seed(): MenuItem[] {
       id: 'k6',
       title: 'Паста карбонара',
       shop: 'kitchen',
-      stock: 9,
+      stock: 0,
       status: { kind: 'available' },
       updatedAt: iso(-2_700_000),
     },
@@ -100,7 +100,7 @@ function seed(): MenuItem[] {
       id: 'p1',
       title: 'Наполеон',
       shop: 'pastry',
-      stock: 8,
+      stock: 0, // остаток 0 + available → инвариант авто-стопит по «закончились продукты»
       status: { kind: 'available' },
       updatedAt: iso(-9_000_000),
     },
@@ -133,8 +133,22 @@ function seed(): MenuItem[] {
 
 let items: MenuItem[] = seed();
 
+/**
+ * Инвариант остатка: доступная позиция с остатком 0 автоматически уходит в стоп
+ * по причине «закончились продукты» (до конца смены). Уже застопленную позицию не
+ * трогаем — её причина (например, «сломалось оборудование») важнее и не должна
+ * затираться. Применяется на чтении, поэтому правило держится независимо от того,
+ * откуда пришли данные меню.
+ */
+function withStockInvariant(item: MenuItem): MenuItem {
+  if (item.stock === 0 && item.status.kind === 'available') {
+    return { ...item, status: { kind: 'stopped', reason: 'out_of_stock', until: null } };
+  }
+  return item;
+}
+
 export function getAllItems(): MenuItem[] {
-  return items.map((item) => ({ ...item }));
+  return items.map((item) => withStockInvariant({ ...item }));
 }
 
 export function findItem(id: string): MenuItem | undefined {
