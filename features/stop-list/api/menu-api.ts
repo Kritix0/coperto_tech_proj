@@ -24,7 +24,7 @@ async function parseError(res: Response): Promise<never> {
       message = data.error;
     }
   } catch {
-    // тело не JSON — оставляем дефолтный текст
+    // тело не JSON - оставляем дефолтный текст
   }
   throw new ApiError(message, res.status);
 }

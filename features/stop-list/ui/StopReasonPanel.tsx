@@ -51,7 +51,7 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
   });
 
   // Переинициализируем форму только при СМЕНЕ позиции (по id), а не на каждое
-  // обновление кэша той же позиции — иначе оптимистичный патч/откат затирал бы ввод.
+  // обновление кэша той же позиции - иначе оптимистичный патч/откат затирал бы ввод.
   const itemId = item?.id ?? null;
   useEffect(() => {
     reset(buildDefaults(item));
@@ -72,7 +72,7 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
   const currentUntil = watch('untilIso');
 
   // Слоты пересчитываем на открытие панели. Если у редактируемой позиции срок
-  // не попадает в сетку (например, из сида) — добавляем его первым, чтобы он был виден.
+  // не попадает в сетку (например, из сида) - добавляем его первым, чтобы он был виден.
   const slots = useMemo<UntilSlot[]>(() => {
     if (!open) return [];
     const base = generateUntilSlots();
@@ -89,14 +89,14 @@ export function StopReasonPanel({ item, onSubmit, onClose }: StopReasonPanelProp
       reason: values.reason,
       until: values.untilMode === 'shift' ? null : values.untilIso,
     };
-    // await держит RHF isSubmitting → кнопка в состоянии загрузки и disabled.
+    // await держит RHF isSubmitting -> кнопка в состоянии загрузки и disabled.
     await onSubmit(item.id, payload);
   });
 
   if (!open || !item) return null;
 
   return (
-    // Анимируем только появление (initial → animate). Закрытие — мгновенный
+    // Анимируем только появление (initial -> animate). Закрытие - мгновенный
     // размонтаж по условию: AnimatePresence exit под React 19 здесь не размонтирует
     // узел после анимации, поэтому не полагаемся на него.
     <motion.div

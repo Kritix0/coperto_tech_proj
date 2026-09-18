@@ -16,7 +16,7 @@ export function filterItems(items: MenuItem[], filters: MenuFilters): MenuItem[]
 
 /**
  * Читает список меню из кэша и возвращает уже отфильтрованный срез.
- * Фильтр — производное состояние поверх единственного запроса, без рефетча.
+ * Фильтр - производное состояние поверх единственного запроса, без рефетча.
  */
 export function useMenuItems(filters: MenuFilters) {
   const query = useQuery(menuItemsQuery());

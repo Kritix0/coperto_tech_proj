@@ -29,7 +29,7 @@ export function StopListView() {
 
   const handleStopSubmit = async (id: string, payload: StopItemPayload) => {
     // Строка обновляется оптимистично сразу (onMutate), но панель держим открытой
-    // со спиннером на кнопке до ответа сервера: успех — закрываем, ошибка — панель
+    // со спиннером на кнопке до ответа сервера: успех - закрываем, ошибка - панель
     // остаётся для повтора (тост об ошибке показывает onError).
     try {
       await stop.mutateAsync({ id, payload });

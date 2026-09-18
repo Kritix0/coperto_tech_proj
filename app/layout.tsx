@@ -7,7 +7,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'Стоп-лист кухни — Coperto',
+  title: 'Стоп-лист кухни - Coperto',
   description: 'Панель управления стоп-листом меню смены',
 };
 

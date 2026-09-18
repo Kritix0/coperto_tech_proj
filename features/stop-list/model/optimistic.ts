@@ -3,7 +3,7 @@ import type { MenuItem, StopItemPayload } from '@/types/menu';
 import { ApiError, resumeMenuItem, stopMenuItem } from '../api/menu-api';
 import { menuKeys } from './queries';
 
-/** Побочные эффекты мутаций, инжектятся из хука (в тесте — no-op). */
+/** Побочные эффекты мутаций, инжектятся из хука (в тесте - no-op). */
 export interface MutationHooks {
   startSaving: (id: string) => void;
   stopSaving: (id: string) => void;
@@ -29,7 +29,7 @@ function toastMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : 'Не удалось сохранить изменения';
 }
 
-/** Общая оптимистика: снимок → патч → откат при ошибке → инвалидация. */
+/** Общая оптимистика: снимок -> патч -> откат при ошибке -> инвалидация. */
 function optimisticHandlers<Vars extends { id: string }>(
   qc: QueryClient,
   hooks: MutationHooks,

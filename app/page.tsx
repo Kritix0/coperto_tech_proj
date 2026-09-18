@@ -10,7 +10,7 @@ const STATUS_LABELS: Record<'available' | 'stopped', string> = {
 
 /**
  * Серверный компонент страницы: читает searchParams и вычисляет начальные
- * фильтры на сервере (SSR-подпись отражает URL). Интерактив — в клиентском
+ * фильтры на сервере (SSR-подпись отражает URL). Интерактив - в клиентском
  * StopListView, который дальше держит фильтры в URL.
  */
 export default async function Page({

@@ -1,6 +1,6 @@
 import type { Shop, StopReason } from '@/types/menu';
 
-/** Человекочитаемые подписи доменных значений — единый источник для UI и бейджей. */
+/** Человекочитаемые подписи доменных значений - единый источник для UI и бейджей. */
 
 export const SHOP_LABELS: Record<Shop, string> = {
   kitchen: 'Кухня',

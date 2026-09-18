@@ -8,7 +8,7 @@ export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** true примерно в 20% случаев — имитация флапающего сервера. */
+/** true примерно в 20% случаев - имитация флапающего сервера. */
 export function shouldFail(): boolean {
   return Math.random() < MUTATION_FAILURE_RATE;
 }

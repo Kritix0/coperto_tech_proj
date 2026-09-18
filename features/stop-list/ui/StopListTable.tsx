@@ -1,6 +1,7 @@
 'use client';
 
-import { AnimatePresence, motion } from 'framer-motion';
+import { memo } from 'react';
+import { motion } from 'framer-motion';
 import type { MenuItem } from '@/types/menu';
 import { SHOP_LABELS, STOP_REASON_LABELS } from '@/shared/domain';
 import { formatUntil } from '@/shared/format';
@@ -55,7 +56,7 @@ interface RowProps {
   onResume: (item: MenuItem) => void;
 }
 
-function Row({ item, saving, onStop, onEdit, onResume }: RowProps) {
+function RowComponent({ item, saving, onStop, onEdit, onResume }: RowProps) {
   const stopped = item.status.kind === 'stopped';
   const resumeDisabled = item.stock === 0;
 
@@ -90,27 +91,24 @@ function Row({ item, saving, onStop, onEdit, onResume }: RowProps) {
         </span>
       </td>
 
-      {/* Смена статуса анимируется на уровне ячейки, а не строки —
-          так не ломается раскладка таблицы. */}
+      {/* Смену статуса анимируем перемонтажом keyed-элемента (без AnimatePresence):
+          при изменении key старый узел заменяется, новый - плавно появляется. */}
       <td className="px-4 py-3">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={item.status.kind}
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
-            transition={{ duration: 0.15 }}
-          >
-            {item.status.kind === 'stopped' ? (
-              <div className="flex flex-col gap-1">
-                <Badge tone="accent">{STOP_REASON_LABELS[item.status.reason]}</Badge>
-                <span className="text-muted text-xs">{formatUntil(item.status.until)}</span>
-              </div>
-            ) : (
-              <Badge tone="success">В продаже</Badge>
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <motion.div
+          key={item.status.kind}
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.15 }}
+        >
+          {item.status.kind === 'stopped' ? (
+            <div className="flex flex-col gap-1">
+              <Badge tone="accent">{STOP_REASON_LABELS[item.status.reason]}</Badge>
+              <span className="text-muted text-xs">{formatUntil(item.status.until)}</span>
+            </div>
+          ) : (
+            <Badge tone="success">В продаже</Badge>
+          )}
+        </motion.div>
       </td>
 
       <td className="px-4 py-3">
@@ -141,3 +139,14 @@ function Row({ item, saving, onStop, onEdit, onResume }: RowProps) {
     </tr>
   );
 }
+
+/**
+ * Строка перерисовывается только при смене своей позиции или флага «сохраняется».
+ * Ссылка item сохраняется между рендерами (оптимистичный патч создаёт новый объект
+ * лишь для изменённой позиции), поэтому неизменные строки не ререндерятся.
+ * Колбэки в сравнении не участвуют — их поведение стабильно (id + экшены стора).
+ */
+const Row = memo(
+  RowComponent,
+  (prev, next) => prev.item === next.item && prev.saving === next.saving,
+);

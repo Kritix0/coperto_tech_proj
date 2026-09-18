@@ -6,7 +6,7 @@ import { MUTATION_DELAY_MS, delay, shouldFail } from '@/server/sim';
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // Валидация той же схемой, что и на клиенте — правила не расходятся.
+  // Валидация той же схемой, что и на клиенте - правила не расходятся.
   const body: unknown = await req.json().catch(() => null);
   const parsed = stopItemPayloadSchema.safeParse(body);
   if (!parsed.success) {

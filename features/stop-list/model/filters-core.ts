@@ -1,14 +1,14 @@
 import type { MenuFilters, ShopFilter, StatusFilter } from '@/types/menu';
 import { SHOPS } from '@/shared/domain';
 
-/** Чистая логика фильтров — можно вызывать и на сервере, и на клиенте. */
+/** Чистая логика фильтров - можно вызывать и на сервере, и на клиенте. */
 
 const SHOP_VALUES: ShopFilter[] = ['all', ...SHOPS];
 const STATUS_VALUES: StatusFilter[] = ['all', 'available', 'stopped'];
 
 export const DEFAULT_FILTERS: MenuFilters = { shop: 'all', status: 'all' };
 
-/** Парсер query-параметров → валидные фильтры. */
+/** Парсер query-параметров -> валидные фильтры. */
 export function parseFilters(params: {
   shop?: string | string[];
   status?: string | string[];

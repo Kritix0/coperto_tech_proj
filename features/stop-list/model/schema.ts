@@ -18,12 +18,12 @@ export const stopReasonSchema = z.enum(['out_of_stock', 'equipment', 'quality', 
  * `now` вынесен в параметр, чтобы на сервере считать от серверного времени.
  */
 export function validateUntil(value: string | null, now = Date.now()): string | null {
-  if (value === null) return null; // до конца смены — всегда валидно
+  if (value === null) return null; // до конца смены - всегда валидно
   const ts = Date.parse(value);
   if (Number.isNaN(ts)) return 'Некорректное время';
   if (ts <= now) return 'Время должно быть в будущем';
   if (ts - now > MAX_AHEAD_MS) return 'Не больше чем на 24 часа вперёд';
-  if (ts % STEP_MS !== 0) return 'Шаг — 15 минут';
+  if (ts % STEP_MS !== 0) return 'Шаг - 15 минут';
   return null;
 }
 
@@ -46,7 +46,7 @@ export type StopItemPayloadInput = z.infer<typeof stopItemPayloadSchema>;
 
 /**
  * Схема формы. Срок либо «до конца смены» (untilMode: 'shift'), либо конкретный
- * слот (untilMode: 'time' + untilIso — ISO-строка из готового списка слотов).
+ * слот (untilMode: 'time' + untilIso - ISO-строка из готового списка слотов).
  * Причина допускает пустую строку в начальном состоянии, но обязана быть выбрана.
  */
 export const stopFormSchema = z
@@ -94,7 +94,7 @@ export function formatSlotLabel(iso: string): string {
 /**
  * Все допустимые слоты срока: от следующей 15-минутной границы (строго в будущем)
  * до now + 24 часа. Список строится по тем же правилам, что и валидация,
- * поэтому выбрать невалидное время нельзя в принципе — и формат от локали браузера
+ * поэтому выбрать невалидное время нельзя в принципе - и формат от локали браузера
  * не зависит.
  */
 export function generateUntilSlots(now = Date.now()): UntilSlot[] {

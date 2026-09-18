@@ -8,7 +8,7 @@ import { parseFilters } from './filters-core';
 export { parseFilters, DEFAULT_FILTERS } from './filters-core';
 
 /**
- * Хук чтения/записи фильтров в URL. URL — единственный источник правды:
+ * Хук чтения/записи фильтров в URL. URL - единственный источник правды:
  * состояние переживает перезагрузку и корректно работает с кнопкой «назад».
  */
 export function useMenuFilters() {
